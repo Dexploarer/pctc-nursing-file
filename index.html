@@ -286,19 +286,33 @@
             justify-content: center;
             gap: 20px;
             margin-top: 30px;
+            flex-wrap: wrap;
         }
         
         .btn {
-            padding: 12px 25px;
+            padding: 12px 18px;
             border: none;
             border-radius: 4px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        /* Mobile tweaks */
+        @media (max-width: 768px) {
+            .container { padding: 12px; }
+            .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .header-text h1 { font-size: 24px; }
+            .header-text p { font-size: 14px; }
+            .school-info { text-align: left; }
+            .card { padding: 18px; }
+            .student-info { grid-template-columns: 1fr; }
+            .btn { width: 100%; justify-content: center; }
+            .signature-pad, .signature-image { height: 140px; }
         }
         
         .btn-primary {
@@ -388,6 +402,73 @@
             /* Keep items tidy when printing */
             .skills-section, .skill-item { page-break-inside: avoid; }
             .category-title { page-break-before: auto; }
+            /* Hide sticky index in print */
+            .sticky-index { display: none !important; }
+            /* Ensure all collapsible sections appear expanded in print */
+            details:not([open]) > .section-body { display: block !important; }
+        }
+    </style>
+    <style>
+        /* Collapsible groups and sticky index */
+        .sticky-index {
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 8px 12px;
+            margin: -8px -8px 16px -8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .sticky-index a {
+            display: inline-block;
+            padding: 6px 10px;
+            margin-right: 8px;
+            border-radius: 16px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .sticky-index a.active { background: var(--primary-color); color: #fff; }
+        details.skills-section { margin-bottom: 18px; }
+        summary.category-summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 22px;
+            color: var(--secondary-color);
+            padding: 8px 0;
+        }
+        summary.category-summary::-webkit-details-marker { display: none; }
+        summary.category-summary::before {
+            content: '\25BC';
+            font-size: 12px;
+            transform: rotate(0deg);
+            transition: transform 0.2s ease;
+            color: var(--secondary-color);
+        }
+        details[open] > summary.category-summary::before { transform: rotate(-180deg); }
+        .section-body { padding-top: 6px; }
+        details.sub-category { margin-left: 12px; margin-bottom: 10px; }
+        summary.sub-summary {
+            list-style: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--primary-color);
+            padding: 6px 0;
+        }
+        summary.sub-summary::-webkit-details-marker { display: none; }
+        @media (max-width: 640px) {
+            .card { padding: 14px; }
+            .skill-item { padding: 8px; }
+            .checkbox-group { gap: 10px; }
+            .sticky-index { padding: 6px 8px; margin: -6px -6px 12px -6px; }
+            summary.category-summary { font-size: 20px; }
+            summary.sub-summary { font-size: 17px; }
         }
     </style>
     </head>
@@ -479,6 +560,7 @@
             <!-- Skills Checklist Section -->
             <div class="card">
                 <h2 class="card-title">Skills Checklist</h2>
+                <nav id="stickyIndex" class="sticky-index" aria-label="Skills index"></nav>
                 
                 <!-- NURSING PROCESS -->
                 <div class="skills-section">
@@ -2056,6 +2138,162 @@
                 el.textContent = `Saved locally at ${date.toLocaleString()}`;
             }
 
+            // Enhance existing static markup into accessible collapsible sections
+            function enhanceCollapsible() {
+                // Upgrade top-level categories
+                document.querySelectorAll('.skills-section').forEach((section, idx) => {
+                    if (section.tagName.toLowerCase() === 'details') return; // already enhanced
+                    const titleEl = section.querySelector(':scope > .category-title');
+                    if (!titleEl) return;
+                    const details = document.createElement('details');
+                    details.className = 'skills-section';
+                    details.setAttribute('open', '');
+                    const summary = document.createElement('summary');
+                    summary.className = 'category-summary';
+                    summary.textContent = titleEl.textContent.trim();
+                    const body = document.createElement('div');
+                    body.className = 'section-body';
+                    Array.from(section.children).forEach(child => {
+                        if (child !== titleEl) body.appendChild(child);
+                    });
+                    details.appendChild(summary);
+                    details.appendChild(body);
+                    // Assign anchor id from title
+                    const slug = titleEl.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                    details.id = `cat-${slug || 'section-' + (idx + 1)}`;
+                    section.replaceWith(details);
+                });
+
+                // Upgrade sub-categories
+                document.querySelectorAll('details.skills-section .sub-category').forEach((sub, sidx) => {
+                    if (sub.tagName.toLowerCase() === 'details') return;
+                    const titleEl = sub.querySelector(':scope > .sub-category-title');
+                    if (!titleEl) return;
+                    const details = document.createElement('details');
+                    details.className = 'sub-category';
+                    details.setAttribute('open', '');
+                    const summary = document.createElement('summary');
+                    summary.className = 'sub-summary';
+                    summary.textContent = titleEl.textContent.trim();
+                    const body = document.createElement('div');
+                    body.className = 'section-body';
+                    Array.from(sub.children).forEach(child => {
+                        if (child !== titleEl) body.appendChild(child);
+                    });
+                    details.appendChild(summary);
+                    details.appendChild(body);
+                    sub.replaceWith(details);
+                });
+            }
+
+            function buildStickyIndex() {
+                const nav = document.getElementById('stickyIndex');
+                if (!nav) return;
+                nav.innerHTML = '';
+                const links = [];
+                document.querySelectorAll('details.skills-section').forEach(sec => {
+                    const title = sec.querySelector(':scope > summary.category-summary')?.textContent?.trim();
+                    if (!title) return;
+                    const id = sec.id || ('cat-' + Math.random().toString(36).slice(2));
+                    sec.id = id;
+                    const a = document.createElement('a');
+                    a.href = `#${id}`;
+                    a.textContent = title;
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                    nav.appendChild(a);
+                    links.push({ a, sec });
+                });
+                // Highlight current section
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const item = links.find(l => l.sec === entry.target);
+                        if (!item) return;
+                        if (entry.isIntersecting) {
+                            links.forEach(l => l.a.classList.remove('active'));
+                            item.a.classList.add('active');
+                        }
+                    });
+                }, { rootMargin: '-20% 0px -70% 0px', threshold: 0.01 });
+                links.forEach(({ sec }) => observer.observe(sec));
+            }
+
+            // Enforce exclusivity among D/C/L/S/F within a skill by shared name attribute
+            function attachExclusivityHandlers() {
+                document.querySelectorAll('.checkbox-group input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        if (!cb.checked) return;
+                        const name = cb.getAttribute('name');
+                        if (!name) return;
+                        document.querySelectorAll(`.checkbox-group input[name="${CSS.escape(name)}"]`).forEach(other => {
+                            if (other !== cb) other.checked = false;
+                        });
+                        saveProgressDebounced();
+                    });
+                });
+            }
+
+            function gatherSkills() {
+                const rows = [];
+                document.querySelectorAll('.skill-item').forEach(item => {
+                    const key = deriveSkillKeyFromItem(item);
+                    if (!key) return;
+                    const label = item.querySelector('.skill-name')?.textContent?.trim() || key;
+                    const states = { D: false, C: false, L: false, S: false, F: false };
+                    item.querySelectorAll('.checkbox-group input[type="checkbox"]').forEach(input => {
+                        const val = (input.value || '').toUpperCase();
+                        if (Object.prototype.hasOwnProperty.call(states, val)) states[val] = input.checked;
+                    });
+                    const note = item.querySelector(`.note-area textarea[data-note-for="${key}"]`)?.value || '';
+                    const selected = Object.keys(states).find(k => states[k]) || '';
+                    rows.push({ key, skill: label, selected, note, ...states });
+                });
+                return rows;
+            }
+
+            function exportToCSV() {
+                const data = gatherSkills();
+                if (!data.length) {
+                    showToast('No skills found to export', '#ff9800');
+                    return;
+                }
+                const headers = ['key','skill','selected','note','D','C','L','S','F'];
+                const esc = (v) => {
+                    const s = String(v ?? '');
+                    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                    return s;
+                };
+                const lines = [headers.join(',')];
+                data.forEach(row => {
+                    lines.push(headers.map(h => esc(row[h])).join(','));
+                });
+                const csv = lines.join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const a = document.createElement('a');
+                const name = (document.getElementById('studentName')?.value || 'nursingChecklist').replace(/[^a-z0-9_-]+/gi, '_');
+                const ts = new Date().toISOString().replace(/[:.]/g, '-');
+                a.download = `${name}-${ts}.csv`;
+                a.href = URL.createObjectURL(blob);
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('CSV exported');
+            }
+
+            // Print: expand all details before print and restore states afterward
+            function setupPrintExpansion() {
+                const getStates = () => Array.from(document.querySelectorAll('details')).map(d => ({ d, open: d.open }));
+                let snapshot = [];
+                window.addEventListener('beforeprint', () => {
+                    snapshot = getStates();
+                    document.querySelectorAll('details').forEach(d => d.open = true);
+                });
+                window.addEventListener('afterprint', () => {
+                    snapshot.forEach(s => { s.d.open = s.open; });
+                    snapshot = [];
+                });
+            }
             function showToast(message, bg = '#4caf50') {
                 const confirmation = document.createElement('div');
                 confirmation.style.position = 'fixed';
@@ -2196,9 +2434,11 @@
                     const key = deriveSkillKeyFromItem(item);
                     if (!key) return;
                     if (!item.querySelector('.note-area')) {
-                        const toggle = document.createElement('span');
-                        toggle.className = 'note-toggle';
-                        toggle.textContent = 'Add note';
+                        const toggle = document.createElement('button');
+                        toggle.className = 'btn btn-tertiary';
+                        toggle.type = 'button';
+                        toggle.setAttribute('aria-label', 'Add note');
+                        toggle.innerHTML = '<i class="material-icons">add</i>';
                         toggle.onclick = () => toggleNote(toggle);
                         const area = document.createElement('div');
                         area.className = 'note-area';
@@ -2492,6 +2732,8 @@
             
             // Load progress when the page loads
             window.addEventListener('load', () => {
+                enhanceCollapsible();
+                buildStickyIndex();
                 setupSignaturePad('student');
                 setupSignaturePad('instructor');
                 ensureNotesForAllSkills();
@@ -2499,6 +2741,8 @@
                 syncSignatureImage('student');
                 syncSignatureImage('instructor');
                 attachAutoSave();
+                attachExclusivityHandlers();
+                setupPrintExpansion();
             });
         </script>
     </body>

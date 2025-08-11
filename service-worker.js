@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pctc-checklist-v1';
+const CACHE_NAME = 'pctc-checklist-v2';
 const ASSETS = [
   '/',
   '/index.html',
